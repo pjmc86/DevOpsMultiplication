@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Multiplication Shuffle Quiz</title>
+<style>
+  :root{
+    --bg:#f7f9ff;
+    --card:#ffffff;
+    --ink:#1e2a3a;
+    --muted:#667085;
+    --accent:#6c5ce7;
+    --accent-2:#00b894;
+    --danger:#e63946;
+    --ok:#2ecc71;
+    --shadow:0 8px 20px rgba(0,0,0,.08);
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+    color:var(--ink); background:linear-gradient(180deg,#eef3ff, #f7f9ff);
+    min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .app{ width:min(920px,100%); }
+  .card{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:24px; margin:auto;
+  }
+  h1{margin:0 0 10px; font-size:clamp(24px,3.4vw,36px)}
+  p.lead{color:var(--muted); margin:0 0 20px}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .row-3{display:grid; grid-template-columns:1fr auto; gap:12px}
+  label{font-size:14px; color:var(--muted); display:block; margin-bottom:6px}
+  input[type="number"]{
+    width:100%; padding:14px 16px; border:1px solid #e5e7eb; border-radius:12px; font-size:18px;
+    outline:none; transition:border .2s, box-shadow .2s; background:#fafbfe;
+  }
+  input[type="number"]:focus{ border-color:var(--accent); box-shadow:0 0 0 4px rgba(108,92,231,.12)}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    border:none; padding:14px 18px; border-radius:12px; font-weight:700; cursor:pointer;
+    background:var(--accent); color:white; font-size:16px; transition:transform .05s ease;
+  }
+  .btn:active{ transform:translateY(1px) }
+  .btn.secondary{ background:#e9ecff; color:#3b4bcc }
+  .btn.ghost{ background:transparent; border:1px solid #d8def8; color:#3b4bcc }
+  .stack{ display:flex; gap:10px; flex-wrap:wrap }
+  .center{ text-align:center }
+  .hidden{ display:none !important }
+  .question{
+    font-size:clamp(28px,4.5vw,44px); font-weight:800; letter-spacing:.5px; margin:12px 0 8px;
+  }
+  .feedback{
+    min-height:32px; display:flex; align-items:center; justify-content:center; gap:10px;
+    font-size:20px; font-weight:700;
+  }
+  .tick{ color:var(--ok) }
+  .cross{ color:var(--danger) }
+  .bar{
+    height:10px; background:#eef1ff; border-radius:999px; overflow:hidden; margin:10px 0 0;
+  }
+  .bar > div{ height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#8b5cf6);
+    transition:width .35s ease-in-out }
+  .pill{
+    display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px;
+    background:#f1f4ff; color:#3b4bcc; font-size:14px; font-weight:700;
+  }
+  table{ width:100%; border-collapse:collapse; margin-top:12px }
+  th,td{ padding:10px 12px; border-bottom:1px solid #eef1ff; text-align:left; font-size:16px }
+  th{ color:#495a8f; background:#f6f7ff }
+  td.bad{ color:var(--danger); font-weight:700 }
+  td.good{ color:var(--ok); font-weight:700 }
+  .footer-note{ color:var(--muted); font-size:14px; margin-top:12px }
+  .brand{ display:flex; align-items:center; gap:10px }
+  .brand .logo{
+    width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,#6c5ce7,#00b894);
+    display:grid; place-items:center; color:white; font-weight:900; box-shadow:var(--shadow)
+  }
+  .sr-only{ position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden }
+</style>
+</head>
+<body>
+  <div class="app">
+    <!-- Setup Screen -->
+    <section id="screen-setup" class="card">
+      <div class="brand">
+        <div class="logo">×</div>
+        <div>
+          <h1>Multiplication Shuffle</h1>
+          <p class="lead">Pick a table and the highest number to multiply up to. Questions will appear in a random order, each asked once.</p>
+        </div>
+      </div>
+      <div class="row" style="margin-top:18px">
+        <div>
+          <label for="baseNumber">Table (e.g., 7 means 7×…)</label>
+          <input id="baseNumber" type="number" min="0" max="99" inputmode="numeric" placeholder="Enter table (e.g., 7)" />
+        </div>
+        <div>
+          <label for="maxNumber">Highest number to multiply by</label>
+          <input id="maxNumber" type="number" min="1" max="200" inputmode="numeric" placeholder="e.g., 12" />
+        </div>
+      </div>
+      <div class="stack" style="margin-top:16px">
+        <button class="btn" id="startBtn" aria-describedby="setupHint">Start Quiz</button>
+        <span id="setupHint" class="footer-note">Tip: leave “Table” as 0 for 0×… practice, or choose 1–12 for classic times tables.</span>
+      </div>
+    </section>
+
+    <!-- Quiz Screen -->
+    <section id="screen-quiz" class="card hidden" aria-live="polite" aria-atomic="true">
+      <div class="row-3">
+        <div class="pill"><span id="progressText">Question 1</span></div>
+        <div class="pill" style="justify-self:end">Score: <span id="scoreNow">0</span></div>
+      </div>
+
+      <div class="bar"><div id="progressBar"></div></div>
+
+      <div class="center" style="margin-top:18px">
+        <div class="question" id="questionText">7 × 3 = ?</div>
+        <label for="answerInput" class="sr-only">Your answer</label>
+        <div class="row-3" style="max-width:520px; margin:12px auto 0">
+          <input id="answerInput" type="number" inputmode="numeric" placeholder="Type your answer…" />
+          <button class="btn" id="submitAnswerBtn">Submit</button>
+        </div>
+        <div class="feedback" id="feedbackArea" aria-live="assertive"></div>
+      </div>
+      <p class="footer-note center">Press Enter to submit.</p>
+    </section>
+
+    <!-- Results Screen -->
+    <section id="screen-results" class="card hidden">
+      <h1>Great job!</h1>
+      <p class="lead">You answered <strong id="finalCorrect">0</strong> out of <strong id="finalTotal">0</strong> correctly.</p>
+
+      <div id="mistakesBlock" class="hidden">
+        <h3>Review your mistakes</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Question</th>
+              <th>Your Answer</th>
+              <th>Correct Answer</th>
+            </tr>
+          </thead>
+          <tbody id="mistakesTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="stack" style="margin-top:18px">
+        <button class="btn" id="retryBtn">Retry</button>
+        <button class="btn ghost" id="newBtn">New</button>
+      </div>
+    </section>
+  </div>
+
+<script>
+(function(){
+  // ----- State -----
+  let state = {
+    base: 0,
+    max: 0,
+    order: [],          // shuffled array [1..max]
+    index: 0,           // current index in order
+    score: 0,
+    responses: [],      // {a: base, b: n, user, correct, ok}
+    lock: false,        // prevent double-submit during feedback
+  };
+
+  // ----- Elements -----
+  const scSetup   = document.getElementById('screen-setup');
+  const scQuiz    = document.getElementById('screen-quiz');
+  const scResult  = document.getElementById('screen-results');
+
+  const baseInput = document.getElementById('baseNumber');
+  const maxInput  = document.getElementById('maxNumber');
+  const startBtn  = document.getElementById('startBtn');
+
+  const questionText  = document.getElementById('questionText');
+  const answerInput   = document.getElementById('answerInput');
+  const submitBtn     = document.getElementById('submitAnswerBtn');
+  const feedbackArea  = document.getElementById('feedbackArea');
+  const progressText  = document.getElementById('progressText');
+  const progressBar   = document.getElementById('progressBar');
+  const scoreNow      = document.getElementById('scoreNow');
+
+  const finalCorrect  = document.getElementById('finalCorrect');
+  const finalTotal    = document.getElementById('finalTotal');
+  const mistakesBlock = document.getElementById('mistakesBlock');
+  const mistakesBody  = document.getElementById('mistakesTableBody');
+  const retryBtn      = document.getElementById('retryBtn');
+  const newBtn        = document.getElementById('newBtn');
+
+  // ----- Helpers -----
+  function show(el){ el.classList.remove('hidden'); }
+  function hide(el){ el.classList.add('hidden'); }
+  function clampInt(v, min, max){
+    const n = Number.parseInt(v, 10);
+    if (Number.isNaN(n)) return null;
+    if (n < min) return min;
+    if (n > max) return max;
+    return n;
+  }
+  function shuffle(arr){
+    for(let i=arr.length-1; i>0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  function setProgress(){
+    const current = Math.min(state.index+1, state.order.length);
+    progressText.textContent = `Question ${current} of ${state.order.length}`;
+    const pct = (state.index / state.order.length) * 100;
+    progressBar.style.width = `${pct}%`;
+    scoreNow.textContent = state.score;
+  }
+  function nextQuestionText(){
+    const b = state.base;
+    const n = state.order[state.index];
+    questionText.textContent = `${b} × ${n} = ?`;
+  }
+  function resetFeedback(){
+    feedbackArea.textContent = '';
+    feedbackArea.className = 'feedback';
+  }
+  function showTick(){
+    feedbackArea.innerHTML = '<span class="tick" aria-label="Correct">✓ Correct!</span>';
+    feedbackArea.className = 'feedback tick';
+  }
+  function showCross(){
+    feedbackArea.innerHTML = '<span class="cross" aria-label="Incorrect">✗ Incorrect</span>';
+    feedbackArea.className = 'feedback cross';
+  }
+
+  // ----- Screens -----
+  function toSetup(){
+    hide(scQuiz); hide(scResult); show(scSetup);
+    baseInput.focus();
+  }
+  function toQuiz(){
+    hide(scSetup); hide(scResult); show(scQuiz);
+    resetFeedback();
+    setProgress();
+    nextQuestionText();
+    answerInput.value = '';
+    setTimeout(()=>answerInput.focus(), 0);
+  }
+  function toResults(){
+    hide(scSetup); hide(scQuiz); show(scResult);
+
+    finalCorrect.textContent = state.score;
+    finalTotal.textContent   = state.order.length;
+
+    // Build mistakes table
+    const mistakes = state.responses.filter(r => !r.ok);
+    if (mistakes.length === 0){
+      mistakesBlock.classList.add('hidden');
+      mistakesBody.innerHTML = '';
+    } else {
+      mistakesBlock.classList.remove('hidden');
+      mistakesBody.innerHTML = mistakes.map(r=>{
+        const q = `${r.a} × ${r.b}`;
+        const cls = r.ok ? 'good' : 'bad';
+        return `<tr>
+          <td>${q}</td>
+          <td class="${cls}">${r.user}</td>
+          <td>${r.correct}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // ----- Quiz Flow -----
+  function startQuiz(){
+    const base = clampInt(baseInput.value, -9999, 9999); // allow 0 table too
+    const max  = clampInt(maxInput.value, 1, 200);
+
+    if (base === null || max === null){
+      animateInvalid();
+      return;
+    }
+
+    state.base = base;
+    state.max  = max;
+    state.order = shuffle([...Array(max).keys()].map(i=>i+1)); // [1..max] shuffled
+    state.index = 0;
+    state.score = 0;
+    state.responses = [];
+    state.lock = false;
+
+    toQuiz();
+  }
+
+  function animateInvalid(){
+    // simple wiggle if inputs invalid
+    const el = scSetup;
+    el.style.transition = 'transform .08s';
+    el.style.transform = 'translateX(-6px)';
+    setTimeout(()=>{ el.style.transform='translateX(6px)' },80);
+    setTimeout(()=>{ el.style.transform='translateX(0)' },160);
+  }
+
+  function submitAnswer(){
+    if (state.lock) return;
+
+    const val = answerInput.value.trim();
+    if (val === '') {
+      answerInput.focus();
+      return;
+    }
+
+    const user = Number(val);
+    if (!Number.isFinite(user)){
+      answerInput.focus();
+      return;
+    }
+
+    // evaluate
+    const a = state.base;
+    const b = state.order[state.index];
+    const correct = a * b;
+    const ok = (user === correct);
+
+    if (ok){ state.score += 1; showTick(); } else { showCross(); }
+
+    state.responses.push({a, b, user, correct, ok});
+
+    state.lock = true;
+
+    // Move on after short pause
+    setTimeout(()=>{
+      state.index += 1;
+      resetFeedback();
+
+      if (state.index >= state.order.length){
+        // finished
+        toResults();
+      } else {
+        setProgress();
+        nextQuestionText();
+        answerInput.value = '';
+        answerInput.focus();
+      }
+      state.lock = false;
+    }, ok ? 650 : 900);
+  }
+
+  function retry(){
+    // Same base & max; reshuffle
+    state.order = shuffle([...Array(state.max).keys()].map(i=>i+1));
+    state.index = 0;
+    state.score = 0;
+    state.responses = [];
+    state.lock = false;
+    toQuiz();
+  }
+
+  // ----- Events -----
+  startBtn.addEventListener('click', startQuiz);
+  submitBtn.addEventListener('click', submitAnswer);
+  answerInput.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter') submitAnswer();
+  });
+  retryBtn.addEventListener('click', retry);
+  newBtn.addEventListener('click', toSetup);
+
+  // Prefill nice defaults for quick demo
+  baseInput.value = '7';
+  maxInput.value  = '12';
+})();
+</script>
+</body>
+</html>
