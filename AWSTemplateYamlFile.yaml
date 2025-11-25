@@ -55,7 +55,7 @@ Resources:
 
 
         cd /var/www/html
-        wget https://raw.githubusercontent.com/pjmc86/DevOpsMultiplication/main/UpgradeMulti.html -O index.html
+        wget https://raw.githubusercontent.com/pjmc86/DevOpsMultiplication/main/MultiplicationApp.html -O index.html
         echo "<h3>Deployed automatically via CloudFormation - $(date)</h3>" >> index.html
 
 
@@ -64,4 +64,5 @@ Outputs:
   WebsiteURL:
     Description: Application URL
     Value: !Sub "http://${WebServer.PublicDnsName}/"
+
 
