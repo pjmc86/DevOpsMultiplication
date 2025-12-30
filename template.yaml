@@ -3,67 +3,63 @@ Description: >
   DevOps Multiplication Demo – Deploys a simple static web app on Apache via EC2.
   Demonstrates Infrastructure as Code for my Level 5 DevOps module.
 
-Parameters:                                               
+Parameters:
   InstanceType:
     Type: String
-    Default: t2.micro                                     
-    Description: EC2 instance type (t2.micro for free tier)
-  KeyName:
-    Type: AWS::EC2::KeyPair::KeyName                      
-    Description: Existing EC2 key pair for SSH access
+    Default: t3.micro
+    Description: EC2 instance type (free-tier friendly)
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: Automatically retrieves the latest Amazon Linux AMI for the region
 
 Resources:
-  WebServerSecurityGroup:   
-    Type: AWS::EC2::SecurityGroup                         
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow HTTP and SSH
+      GroupDescription: Allow HTTP access
       SecurityGroupIngress:
-        - IpProtocol: tcp                                 
+        - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
 
-        - IpProtocol: tcp                                 
-          FromPort: 22                                    
+        - IpProtocol: tcp                                 # Allow SSH (optional) for admin access
+          FromPort: 22                                    #   In production: I would restrict to a specific IP or remove entirely.
           ToPort: 22
           CidrIp: 0.0.0.0/0
+          
       Tags:
-        - Key: Name                                     
+        - Key: Name
           Value: DevOpsSecurityGroup
 
   WebServer:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: !Ref InstanceType                    
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
       SecurityGroupIds:
-        - !Ref WebServerSecurityGroup                     
-      KeyName: !Ref KeyName                               
-      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 (eu-west-1)  
+        - !Ref WebServerSecurityGroup
       Tags:
         - Key: Name
           Value: DevOpsWebServer
-      UserData: !Base64 |
-        #!/bin/bash
-        yum update -y
 
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y httpd wget
+          systemctl enable httpd
+          systemctl start httpd
 
-        yum install -y httpd wget
-
-
-        systemctl enable httpd
-        systemctl start httpd
-
-
-        cd /var/www/html
-        wget https://raw.githubusercontent.com/pjmc86/DevOpsMultiplication/main/MultiplicationApp.html -O index.html
-        echo "<h3>Deployed automatically via CloudFormation - $(date)</h3>" >> index.html
-
-
+          cd /var/www/html
+          wget https://raw.githubusercontent.com/pjmc86/DevOpsMultiplication/main/MultiplicationApp.html -O index.html
+          echo "<h3>Deployed automatically via CloudFormation - $(date)</h3>" >> index.html
 
 Outputs:
   WebsiteURL:
-    Description: Application URL
+    Description: URL of the deployed application
     Value: !Sub "http://${WebServer.PublicDnsName}/"
-
 
 
